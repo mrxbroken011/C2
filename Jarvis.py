@@ -1,3 +1,5 @@
+import cv2
+import face_recognition
 import speech_recognition as sr
 import pyttsx3
 import pywhatkit
@@ -13,24 +15,20 @@ import screen_brightness_control as sbc
 API_KEY = "your_perplexity_api_key_here" 
 API_URL = "https://api.perplexity.ai/chat/completions"
 
-# Colors for CMD
+# CMD Colors
 GREEN = "\033[1;32;40m"
 CYAN = "\033[1;36;40m"
+RED = "\033[1;31;40m"
 RESET = "\033[0m"
 
 engine = pyttsx3.init()
 voices = engine.getProperty('voices')
 
-# Hindi Voice Setup
-found_hindi = False
+# Hindi Voice Setup (India)
 for voice in voices:
     if "hindi" in voice.name.lower():
         engine.setProperty('voice', voice.id)
-        found_hindi = True
         break
-if not found_hindi:
-    engine.setProperty('voice', voices[0].id) 
-
 engine.setProperty('rate', 180)
 
 def speak(text):
@@ -38,80 +36,102 @@ def speak(text):
     engine.say(text)
     engine.runAndWait()
 
+# --- BIOMETRIC SECTION ---
+def face_auth():
+    print(f"{CYAN}Scanning face for identity verification...{RESET}")
+    try:
+        master_img = face_recognition.load_image_file("master_face.jpg")
+        master_enc = face_recognition.face_encodings(master_img)[0]
+    except:
+        print(f"{RED}Error: 'master_face.jpg' not found in folder!{RESET}")
+        return False
+
+    cam = cv2.VideoCapture(0)
+    auth_success = False
+    for _ in range(30): # 30 frames tak try karega
+        ret, frame = cam.read()
+        if not ret: break
+        rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        face_locs = face_recognition.face_locations(rgb_frame)
+        face_encs = face_recognition.face_encodings(rgb_frame, face_locs)
+
+        for enc in face_encs:
+            if face_recognition.compare_faces([master_enc], enc)[0]:
+                auth_success = True
+                break
+        if auth_success: break
+    
+    cam.release()
+    cv2.destroyAllWindows()
+    return auth_success
+
+# --- VOICE & LOGIC SECTION ---
 def listen():
     listener = sr.Recognizer()
     with sr.Microphone() as source:
         listener.adjust_for_ambient_noise(source, duration=0.5)
-        print(f"{CYAN}Monitoring for 'Jarvis'...{RESET}")
+        print(f"{CYAN}Monitoring...{RESET}")
         audio = listener.listen(source)
     try:
-        # Hindi-India recognition
-        command = listener.recognize_google(audio, language='hi-IN')
-        print(f"User: {command}")
-        return command.lower()
+        return listener.recognize_google(audio, language='hi-IN').lower()
     except:
         return ""
 
-def query_api(question):
+def query_ai(question):
     headers = {"Authorization": f"Bearer {API_KEY}", "Content-Type": "application/json"}
     payload = {
         "model": "sonar-pro",
         "messages": [
-            {"role": "system", "content": "You are JARVIS. Respond in Hinglish (Hindi+English) as a witty personal assistant for Mr. Broken. Be concise."},
+            {"role": "system", "content": "You are JARVIS. Respond in Hinglish. Be witty and professional. Mention you are secured by face-lock."},
             {"role": "user", "content": question}
         ]
     }
     try:
-        response = requests.post(API_URL, headers=headers, json=payload)
-        return response.json()["choices"][0]["message"]["content"]
+        res = requests.post(API_URL, headers=headers, json=payload)
+        return res.json()["choices"][0]["message"]["content"]
     except:
-        return "Sir, main mainframe se connect nahi kar paa raha hoon."
+        return "Sir, connection unstable hai."
 
-def execute_task(command):
+def execute(command):
     task = command.replace("jarvis", "").strip()
     
-    # 1. PC Controls
-    if "restart" in task or "computer restart karo" in task:
-        speak("Thik hai Sir, system restart kar raha hoon.")
+    if "restart" in task:
+        speak("PC restart ho raha hai, Sir.")
         os.system("shutdown /r /t 5")
-    elif "shutdown" in task or "computer band karo" in task:
-        speak("Shutdown sequence chalu ho gaya hai. Alvida.")
+    elif "shutdown" in task:
+        speak("System band kar raha hoon.")
         os.system("shutdown /s /t 10")
-    elif "lock" in task or "pc lock karo" in task:
-        os.system("rundll32.exe user32.dll,LockWorkStation")
-        speak("System locked.")
-    
-    # 2. System Settings
-    elif "volume up" in task or "aawaz badhao" in task:
-        pyautogui.press("volumeup")
-    elif "volume down" in task or "aawaz kam karo" in task:
-        pyautogui.press("volumedown")
     elif "screenshot" in task:
         pyautogui.screenshot("jarvis_snap.png")
-        speak("Screenshot le liya gaya hai.")
-
-    # 3. Automation
+        speak("Screenshot saved.")
+    elif "volume up" in task:
+        pyautogui.press("volumeup")
+    elif "volume down" in task:
+        pyautogui.press("volumedown")
     elif "play" in task:
-        song = task.replace("play", "").strip()
-        speak(f"Playing {song} on YouTube.")
+        song = task.replace("play", "")
+        speak(f"Playing {song}")
         pywhatkit.playonyt(song)
-
-    # 4. Fallback to Perplexity AI
+    elif "time" in task:
+        speak(datetime.datetime.now().strftime("%I:%M %p"))
     else:
-        answer = query_api(task)
+        answer = query_ai(task)
         speak(answer)
 
-def main():
-    os.system('cls' if os.name == 'nt' else 'clear')
-    print(f"{GREEN}=== JARVIS MARK VII IS ONLINE ==={RESET}")
-    speak("Systems online. Main taiyar hoon, Sir.")
-    while True:
-        raw_speech = listen()
-        if "jarvis" in raw_speech:
-            execute_task(raw_speech)
-        elif "exit" in raw_speech or "alvida" in raw_speech:
-            speak("Powering down. Goodbye Sir.")
-            break
-
+# --- MAIN ENGINE ---
 if __name__ == "__main__":
-    main()
+    os.system('cls')
+    print(f"{GREEN}=== JARVIS BIOMETRIC INTERFACE ==={RESET}")
+    
+    if face_auth():
+        speak("Identity verified. Welcome back, Mr. Broken.")
+        while True:
+            cmd = listen()
+            if "jarvis" in cmd:
+                execute(cmd)
+            elif "exit" in cmd or "alvida" in cmd:
+                speak("Going offline. Take care Sir.")
+                break
+    else:
+        speak("Unauthorized access. Systems locked.")
+        sys.exit()
