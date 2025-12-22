@@ -27,13 +27,13 @@ pip install opencv-python face-recognition speechrecognition pyttsx3 pywhatkit w
 
 Saari files ko ek hi folder mein rakhein:
 
-* `jarvis_pro.py` (Main Python Script)
-* `Launch_Jarvis.bat` (Startup Batch File)
+* `jarvis.py` (Main Python Script)
+* `Jarvis.bat` (Startup Batch File)
 * `master_face.jpg` (Aapki high-quality photo)
 
 ### 3. Configuration
 
-`jarvis_pro.py` file ko edit karein aur apni **Perplexity API Key** yahan dalein:
+`jarvis.py` file ko edit karein aur apni **Perplexity API Key** yahan dalein:
 
 ```python
 API_KEY = "your_api_key_here"
@@ -44,7 +44,7 @@ API_KEY = "your_api_key_here"
 
 ## 🎙️ How to Use
 
-1. **Launch:** `Launch_Jarvis.bat` par right-click karein aur **Run as Administrator** karein.
+1. **Launch:** `Jarvis.bat` par right-click karein aur **Run as Administrator** karein.
 2. **Auth:** Camera khulega, apna chehra dikhayein.
 3. **Command:** Jab JARVIS kahe "Systems Online", tab bolein:
 * *"Jarvis, volume badhao"*
@@ -65,4 +65,3 @@ API_KEY = "your_api_key_here"
 
 ---
 
-**Sir, README ready hai! Kya main aapke liye is project ka ek "Demo Video" script likhoon ya kuch aur upgrade karoon?**
